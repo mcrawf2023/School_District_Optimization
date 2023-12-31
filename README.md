@@ -1,1 +1,1 @@
-# School_District_Optimization
+The goal of this problem set was to create a linear programming model in R that minimized the busing cost per student across 6 areas and 3 schools, while holding to the appropriate grade percentage thresholds for each school and not violating the school capacities given in the original problem. 
