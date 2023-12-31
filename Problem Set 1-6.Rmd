@@ -1,0 +1,397 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(lpSolve, quietly = TRUE)
+library(kableExtra, quietly = TRUE)
+```
+
+
+1.
+
+```{r}
+obj_fun <- c(300,0,700,0,400,500,600,300,200,200,500,0,0,0,400,500,300,0)
+#x11,x12,x13,x21,x22,x23,x31,x32,x33,x41,x42,x43,x51,x52,x53,x61,x62,x63
+```
+
+```{r}
+const_LHS <- matrix(c(1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0, #s1 cap
+                      0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0, #s2 cap
+                      0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1, #s3 cap
+                      1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, #a1
+                      0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0, #a2
+                      0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0, #a3
+                      0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0, #a4
+                      0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0, #a5
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1, #a6
+                      0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04,0,0, #s1 6th 30
+                      -0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02,0,0, #s1 6th 36
+                      0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02,0,0, #s1 7th 30
+                      0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08,0,0, #s1 7th 36
+                      0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08,0,0, #s1 8th 30
+                      -0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02,0,0, #s1 8th 36
+                      0,0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04,0, #s2 6th 30
+                      0,-0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02,0, #s2 6th 36
+                      0,0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02,0, #s2 7th 30
+                      0,0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08,0, #s2 7th 36
+                      0,0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08,0, #s2 8th 30
+                      0,-0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02,0, #s2 8th 36
+                      0,0,0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04, #s3 6th 30
+                      0,0,-0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02, #s3 6th 36
+                      0,0,0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02, #s3 7th 30
+                      0,0,0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08, #s3 7th 36
+                      0,0,0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08, #s3 8th 30
+                      0,0,-0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02, #s3 8th 36
+                      0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, #infeasible x21
+                      0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0, #infeasible x43
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0), #infeasible x52
+                    byrow=TRUE, ncol=18)
+```
+
+
+```{r}
+const_dir <- c("<=",
+               "<=",
+               "<=",
+               "=",
+               "=",
+               "=",
+               "=",
+               "=",
+               "=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               "=",
+               "=",
+               "=")
+```
+
+```{r}
+const_RHS <- c(900,
+               1100,
+               1000,
+               450,
+               600,
+               550,
+               350,
+               500,
+               450,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0)
+```
+
+
+```{r}
+LP_model <- lp(direction='min',
+               objective.in = obj_fun,
+               const.mat= const_LHS,
+               const.dir = const_dir,
+               const.rhs = const_RHS,
+               compute.sens = TRUE,
+               all.int = TRUE
+) 
+```
+
+```{r}
+LP_model
+```
+
+optimal solution has total cost of $555,600
+
+
+```{r}
+optim_val <- LP_model$solution
+optim_val
+```
+
+optimal solution:
+send all 450 from area 1 to school 2
+send 432 kids from area 2 to school 2 and 168 to school 3
+send 4 kids from area 3 to school 1, 218 to school 2, and 328 to school 3
+send all 350 kids from area 4 to school 1
+send 364 kids from area 5 to school 1 and 136 to school 3
+send 82 kids from area 6 to school 1 and 368 to school 3
+
+school 1 students = 0+0+4+350+364+82 = 800 - non binding capacity (slack = 100)
+school 2 = 450+432+218+0+0+0 = 1100 - binding capacity
+school 3 = 0+168+328+0+136+368 = 1000 - binding capacity
+
+
+2a.
+
+```{r}
+sens_LB <- LP_model$sens.coef.from
+sens_LB
+```
+
+```{r}
+sens_UB <- LP_model$sens.coef.to
+sens_UB
+```
+
+upper bound for area 6 school one is 680, increase is to 550, don't need to re-solve
+
+2b.
+ 
+ area 6 school 2: upper limit is infinite - don't need to re-solve won't affect solution, will still be 0 students
+ area 6 school 3: busing cost is 0 so 10% increase would still be 0
+ 
+ 
+ 3a. (still confused how to interpret)
+ 
+```{r}
+LP_model$duals
+```
+
+```{r}
+LP_model$duals.from
+```
+ 
+```{r}
+LP_model$duals.to
+```
+ 
+ 
+ 
+ --
+ EVERYTHING BELOW THIS IS FROM BEFORE WHEN WE HADN'T ADDED INT CONSTRAINT
+ 
+ 
+
+```{r}
+obj_fun2 <- c(300,0,700,0,400,500,600,300,200,200,500,0,0,0,400,550,300,0)
+LP_model2 <- lp(direction='min',
+               objective.in = obj_fun2,
+               const.mat= const_LHS,
+               const.dir = const_dir,
+               const.rhs = const_RHS,
+               compute.sens = TRUE
+)
+LP_model2
+```
+
+```{r}
+optim_val2 <- LP_model2$solution
+optim_val2
+```
+
+```{r}
+sens_UB2 <- LP_model2$sens.coef.to
+sens_UB2
+```
+
+no limit for area 6 school 2, don't need to re-solve 
+
+find new optimal cost
+
+```{r}
+obj_fun3 <- c(300,0,700,0,400,500,600,300,200,200,500,0,0,0,400,550,330,0)
+LP_model3 <- lp(direction='min',
+               objective.in = obj_fun3,
+               const.mat= const_LHS,
+               const.dir = const_dir,
+               const.rhs = const_RHS,
+               compute.sens = TRUE
+)
+LP_model3
+```
+
+figure out slack
+
+
+
+back to LP_model without bus increases for area 6
+```{r}
+shadow_prices <- LP_model$duals
+shadow_prices
+```
+
+```{r}
+LP_model$duals.to
+```
+
+```{r}
+LP_model$duals.from
+```
+
+I have different values for this than them
+are we interpreting the negative shadow prices as reducing costs or increasing costs (not sure if it's diff bc it's minimization)
+
+if we increase students by one unit we will decrease (-) or increase (+) costs by x amount
+increasing by more = multiply by the shadow price
+look at if the cost will increase so much that it wouldn't be worth it or if it would increase so if you add a classroom you wouldn't decrease the cost
+can't incrase infinitely - can increase up to the slack level, once you go below that you will need to re-solve the model 
+so have to consider which is non binding 
+slack should be 560 - can only decrease by that
+make sure to use integer constraints with all.int = TRUE
+consider each area separately
+
+part 4
+
+has to be a binary integer problem
+decision variables need to be binary
+
+
+```{r}
+obj_fun4 <- c(300,0,700,0,400,500,600,300,200,200,500,0,0,0,400,500,300,0)
+#x11,x12,x13,x21,x22,x23,x31,x32,x33,x41,x42,x43,x51,x52,x53,x61,x62,x63
+```
+
+```{r}
+const_LHS4 <- matrix(c(1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0, #s1 cap
+                      0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0, #s2 cap
+                      0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1, #s3 cap
+                      1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, #a1
+                      0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0, #a2
+                      0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0, #a3
+                      0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0, #a4
+                      0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0, #a5
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1, #a6
+                      0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04,0,0, #s1 6th 30
+                      -0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02,0,0, #s1 6th 36
+                      0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02,0,0, #s1 7th 30
+                      0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08,0,0, #s1 7th 36
+                      0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08,0,0, #s1 8th 30
+                      -0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02,0,0, #s1 8th 36
+                      0,0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04,0, #s2 6th 30
+                      0,-0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02,0, #s2 6th 36
+                      0,0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02,0, #s2 7th 30
+                      0,0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08,0, #s2 7th 36
+                      0,0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08,0, #s2 8th 30
+                      0,-0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02,0, #s2 8th 36
+                      0,0,0.02,0,0,0.07,0,0,0,0,0,-0.02,0,0,0.09,0,0,0.04, #s3 6th 30
+                      0,0,-0.04,0,0,0.01,0,0,-0.06,0,0,-0.08,0,0,0.03,0,0,-0.02, #s3 6th 36
+                      0,0,0.08,0,0,-0.02,0,0,0.02,0,0,0.1,0,0,0.04,0,0,-0.02, #s3 7th 30
+                      0,0,0.02,0,0,-0.08,0,0,-0.04,0,0,0.04,0,0,-0.02,0,0,-0.08, #s3 7th 36
+                      0,0,0,0,0,0.05,0,0,0.08,0,0,0.02,0,0,-0.03,0,0,0.08, #s3 8th 30
+                      0,0,-0.06,0,0,-0.01,0,0,0.02,0,0,-0.04,0,0,-0.09,0,0,0.02, #s3 8th 36
+                      0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0, #infeasible x21
+                      0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0, #infeasible x43
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0), #infeasible x52
+                    byrow=TRUE, ncol=18)
+```
+
+
+```{r}
+const_dir4 <- c("<=",
+               "<=",
+               "<=",
+               "=",
+               "=",
+               "=",
+               "=",
+               "=",
+               "=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               ">=",
+               "<=",
+               "=",
+               "=",
+               "=")
+```
+
+```{r}
+const_RHS4 <- c(900,
+               1100,
+               1000,
+               450,
+               600,
+               550,
+               350,
+               500,
+               450,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+               0)
+```
+
+
+```{r}
+LP_model4 <- lp(direction='min',
+               objective.in = obj_fun4,
+               const.mat= const_LHS4,
+               const.dir = const_dir4,
+               const.rhs = const_RHS4,
+               compute.sens = TRUE,
+)
+```
+
+```{r}
+LP_model4
+```
+
+
+```{r}
+optim_val <- LP_model4$solution
+optim_val
+```
